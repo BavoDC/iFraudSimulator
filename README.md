@@ -25,7 +25,7 @@ vignette("iFraudSimulator")
 ```
 .
 
-The working is currently on hold on arXiv. As soon as this is resolved, the link to the arXiv paper will be added.
+The working paper is currently on hold on arXiv. As soon as this is resolved, the link to the arXiv paper will be added.
 
 
 ## Contact
