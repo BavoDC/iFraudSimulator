@@ -1,0 +1,138 @@
+---
+title: "Fraud detection via social network analysis using the BiRank algorithm"
+author: "Bavo D.C. Campo"
+date: "`r Sys.Date()`"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+vignette: >
+  %\VignetteIndexEntry{Fraud detection via social network analysis using the BiRank algorithm}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+```{r setup, include = FALSE, echo = FALSE, message = F, warning = F}
+library(igraph)
+library(knitr)
+library(bookdown)
+library(htmlTable)
+library(iFraudSimulator)
+options(table_counter = T)
+# knit_hooks$set(plot = function(x, options) {
+#   paste('<figure><figcaption>', options$fig.cap, '</figcaption><img src="',
+#         opts_knit$get('base.url'), paste(x, collapse = '.'),
+#         '"></figure>',
+#         sep = '')
+# })
+FixTable <- function(x, ...) {
+  htmlTable::htmlTable(x, rnames = F,
+                           css.cell = rbind(rep("background: lightgrey; padding-left: .5em; padding-right: .2em;", 
+                               times = ncol(x)),
+                           matrix("", 
+                                  ncol = ncol(x), 
+                                  nrow = nrow(x))),
+                           ...)
+}
+```
+
+# Social networks 
+
+One of the possible approaches to detect suspicious claims in insurance is through the use of social networks. Considering that social relations are of great importance in organized crime, such as fraud, social network analytics is particularly well suited for fraud detection. With this method, social structures are analyzed using networks and graph theory. The rationale is that fraudulent activity can be detected by measuring proximity to known fraudulent cases or exposure to nearby fraudulent claims.
+
+An example of such a social network is shown in Figure \@ref(fig:SampleNetwork). The social network consists of claims and parties, with the latter being defined as all entities that are not claims (e.g. policyholder, broker, experts, ...). In this example, there are 5 claims of which 1 is fraudulent. Claims that are closer to the fraudulent claim are regarded as more suspicious than claims that are further removed (e.g. C5 should be regarded as more suspicious than C2). Hence, ideally we should arrive at a score that indicates which claims are regarded as more suspicious than others.
+
+```{r SampleNetwork, echo = FALSE, fig.cap = "Sample network", fig.width = 7.5, fig.align='center'}
+WebGraph = data.frame(from = c('C3','C3', 'C4', 'P2','P3','P3', 'C1','C5', 'P1','P4'),
+                       to = c('P2', 'P3', 'P3','C1','C1', 'C5','P1','P4', 'C2', 'C2'  ))
+g        = graph_from_data_frame(WebGraph, directed = FALSE)
+pos      = cbind(c(1,1,2,2,2.5,3,4,4,5),c(3,1,4,2,3,0.1,2,0.1,1 ))
+igraph::V(g)$color = sapply(igraph::V(g)$name, function(x) {
+  if (grepl("C4", x)) {
+    "red"
+  } else if (grepl("C", x)) {
+    "green"
+  } else {
+    "grey"
+  }
+  })
+igraph::V(g)$shape = sapply(igraph::V(g)$name, function(x) {
+  if (grepl("C", x)) {
+    "circle"
+  } else {
+    "square"
+  }
+})
+set.seed(63)
+pos = layout_with_dh(g, coords = pos, weight.edge.lengths = edge_density(g) / 1e5)
+plot.igraph(g, edge.label = NA, edge.color = 'black', layout = pos, 
+            vertex.label = igraph::V(g)$name, vertex.color = igraph::V(g)$color, 
+            vertex.label.color = 'black', vertex.size = 50, main = "Social network",
+            vertex.shape = igraph::V(g)$shape)
+legend("topleft", c("Unknown/ non-fraudulent claim", "Fraudulent claim", "Party (PH, broker, ...)"),
+       pch = c(rep(21, 2), 22), col = "black", bty = "n", pt.bg = c("green", "red", "grey"),
+       pt.cex = 2, y.intersp = 1.5,)
+```
+
+## Computing fraud scores: BiRank algorithm
+Ideally, we should be able to rank claims based on their proximity to known fraudulent claims. Claims that are closer to known fraudulent claims should be regarded as more suspicious than claims that are closer to (known) non-fraudulent claims. This ranking should be reflected in what we will call the fraud score. The higher the fraud score, the more suspicious the claim. To compute this fraud score, we make use of the BiRank algorithm.
+
+The BiRank algorithm requires two pieces of information on the network in order to be able to compute the fraud scores. The first piece of information is a database that indicates which parties are connected to which claims. For our example, this is illustrated in <a href="#tab:Edges">Table 1</a>.
+
+```{r echo = F, results = 'asis'}
+NetwLabel = data.frame(
+  'start node' = c('P2', 'P3', 'P3', 'C1', 'C1', 'C5', 'P1', 'P4', 'C2', 'C2'),
+  'end node' = c('C3', 'C3', 'C4', 'P2', 'P3', 'P3', 'C1', 'C5', 'P1', 'P4'),
+  stringsAsFactors = F,
+  check.names = F
+)
+NetwLabel[grepl("C", NetwLabel$`start node`), 1:2] = NetwLabel[grepl("C", NetwLabel$`start node`), 2:1] 
+NetwLabel = NetwLabel[order(NetwLabel$`start node`), ]
+rownames(NetwLabel) = NULL
+print(FixTable(NetwLabel, caption = 'Edges network', label = 'tab:Edges'))
+```
+
+In addition, we need to convey to the algorithm which claims are known to be fraudulent and which are not (see <a href="#tab:FraudInd">Table 2</a>).
+
+```{r echo = F, results = 'asis'}
+c0  = c(rep(0, 3), 1, 0) 
+FrM = data.frame("Fraud indicator" = c0, check.names = F, row.names = NULL)
+print(FixTable(FrM, caption = 'Fraud indicator', label = 'tab:FraudInd'))
+
+```
+
+
+```{r, echo = T, message = F, warning = F, results = 'hide'}
+NetwLabel = data.frame(
+  startNode = c('P2', 'P3', 'P3', 'C1', 'C1', 'C5', 'P1', 'P4', 'C2', 'C2'),
+  endNode = c('C3', 'C3', 'C4', 'P2', 'P3', 'P3', 'C1', 'C5', 'P1', 'P4'),
+  stringsAsFactors = F
+)
+NetwLabel[grepl("C", NetwLabel$startNode), 1:2] = NetwLabel[grepl("C", NetwLabel$startNode), 2:1] 
+NetwLabel = NetwLabel[order(NetwLabel$startNode), ]
+NetwLabel$FraudInd = sapply(NetwLabel$endNode, function(x)
+  if (x == "C4")
+    1
+  else
+    0)
+NetwLabel$startNode = as.numeric(gsub("P", "", NetwLabel$startNode))
+NetwLabel$endNode   = as.numeric(gsub("C", "", NetwLabel$endNode))
+Results  = BiRankFr(NetwLabel, data.frame(FraudInd = c0))
+```
+
+Using this, we are then able to compute the fraud scores and the resulting scores are shown in <a href="#tab:FraudScores">Table 3</a>. In this table, C4 is given the highest score which is in line with our expectations as this claim is known to be fraudulent. Following C4, claims C1, C3 and C5 are the ones with the highest scores and looking back at Figure \@ref(fig:SampleNetwork), we see that these are closest to C4. Conversely, C2 is the claim that is the furthest from C4 and hence, has the lowest fraud score of all claims.
+
+
+```{r, echo = F, results = 'asis', message = F, warning = F}
+FrSc     = Results$ResultsClaims
+FrSc[, 2:4] = lapply(FrSc[, 2:4], round, digits = 3) 
+colnames(FrSc) = c("Claim", "Fraud score", "Std score", "Scaled score")
+print(FixTable(FrSc, caption = 'Fraud scores', label = 'tab:FraudScores'))
+
+```
+
+
+Summarized, we attempt to detect fraudulent claims by use of social network analysis. Using the BiRank algorithm, we compute fraud scores that indicate the proximity of different claims to known fraudulent claims. Claims that are closer to known fraudulent claims get a higher score and are regarded as more suspicious as claims with a lower score.
+
+
+
+

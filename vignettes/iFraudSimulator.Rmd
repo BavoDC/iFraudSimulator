@@ -1,0 +1,139 @@
+---
+title: "Generating synthetic insurance fraud network data with iFraudSimulator"
+author: "Bavo D.C. Campo"
+date: "`r Sys.Date()`"
+output:
+  bookdown::html_document2:
+    toc: true
+    rmarkdown::html_vignette:
+      fig_caption: yes
+bibliography: references.bib
+latex_engine: xelatex
+biblio-style: "apalike"
+vignette: >
+  %\VignetteIndexEntry{iFraudSimulator}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+options(rmarkdown.html_vignette.check_title = FALSE)
+```
+
+
+In this document, we give you a brief overview of the basic functionality of the `iFraudSimulator` package. In this package, we implemented the simulation engine to generate synthetic insurance fraud network data as described in [@Campo2023Simulator]. For a comprehensive overview of how the synthetic data is generated, we refer the reader to the paper. The engine is inspired by and has the same structure as the real life insurance fraud data set used in @PaperMaria.
+
+For a more detailed overview of the functions, you can consult the help-pages. Please feel free to send any suggestions and bug reports to the package author.
+
+
+# Generating a synthetic insurance fraud network data set
+To simulate a synthetic data set, we rely on the `sfnGenerator` function. In this section, we will give a brief overview of its functionality. We advise to go through the help-page to get a complete overview of the function.
+
+```{r, echo = FALSE}
+suppressMessages(library(iFraudSimulator))
+suppressMessages(library(magrittr))
+library(bookdown)
+```
+```{r}
+?sfnGenerator
+```
+
+Using the code below, we can generate a small synthetic data set where the number of policyholders `NrPH` is set to 10 000 and the class imbalance `TargetPrev` to 5%. We also set a seed for reproducibility.
+```{r, echo = FALSE, eval = FALSE}
+SimObj = sfnGenerator(TargetPrev = 0.05, NrPH = 10000, Seed = 1, printProgress = FALSE, Parallel = FALSE)
+```
+
+The same object can also be loaded into your current working environment using the code
+```{r}
+data("SimObj")
+```
+
+By printing the object, you get a first glimpse of the synthetic data set. You will see the first part of the data set and the summary plot will be shown as well.
+```{r, fig.align = 'center', fig.cap = "Summary plot of the synthetic data set", fig.topcaption = TRUE, out.width="100%"}
+SimObj
+```
+
+Further, the `sfnData` object contains the following slots:
+ <br /> - the matched call;
+ <br /> - the synthetic data set;
+ <br /> - the summary plot;
+ <br /> - the target class imbalance;
+ <br /> - the class imbalance in the data set;
+ <br /> - the data set to set up the adjacency matrix;
+ <br /> - the adjacency matrix of the bipartite graph;
+ <br /> - the object resulting from running the BiRank algorithm using the function `BiRankFr`;
+ 
+```{r}
+names(SimObj)
+```
+
+# Development and validation of a fraud detection model using the synthetic data set
+Using the synthetic data set, we can develop and validate a fraud detection model. Hereto, we first copy the data set to a separate object.
+```{r}
+Dt = copy(SimObj$Dt)
+```
+
+To analyze whether the fraud detection model would benefit from social network analytics, we have to examine if the network shows patterns of homophily [@Baesens2015;@PaperMaria]. That is, whether our network consists of closely interconnected dense networks of fraudulent claims. Hereto, we measure the dyadicity and heterophilicity. We want the dyadicity to be larger than one, since this indicates that fraudulent nodes are more densely connected to each other compared to what we expect by change. Additionally, we want the heterophilicity to be smaller than one, as it signifies that fraudulent claims have fewer connections to non-fraudulent claims than what is expected by chance.
+
+We can simply compute the dyadicity and heterophilicity using the function `Homophily`, which takes an `sfnData` object as input. In our illustrative example, the network exhibits signs of homophily. Hence, our fraud detection model would benefit from using social network features in addition to the traditional claim characteristics.
+```{r}
+Homophily(SimObj)
+```
+For illustration purposes and given its robustness to imbalances class sizes [@Oommen2011;@Marques2013;@Goorbergh2022], we use logistic regression as statistical or supervised learning technique to construct our model. To illustrate that we are better able to detect fraudulent claims when incorporating social network features alongside the traditional claim characteristics, we fit two models:
+ <br /> - model 1: includes only the traditional claim characteristics;
+ <br /> - model 2: in addition to the covariates present in model 1, model 2 also includes social network features.
+ 
+```{r}
+formulaExpert   = update.formula(SimObj$call$Formulas$Fraud, ExpertJudgement ~ . - Criminal)
+formulaExpert   = do.call("substitute", list(expr = formulaExpert, env = alist(AgePH = AgePHScaled)))
+netwFeatures = c("fraudScore", colnames(Dt)) %>% .[grepl("fraudScore|n1|n2", .)] %>% .[!grepl("n1Size|n2Size|Orig", .)]
+formulaM1 = update.formula(formulaExpert, paste0(". ~ . -", 
+                                                 paste0(c(netwFeatures, "n1Size", "n2Size"), collapse = " - ")))
+formulaM2 = formulaExpert
+```
+
+We fit both models on the investigated (and hence, labeled) claims. Hereafter, we assess the predictive performance of the models on the in-sample (i.e. the investigated claims) and out-of-sample (i.e. the uninvestigated claims and here we use the true label as outcome) data set. We compute the area under the receiver operating characteristic curve and the top decile lift.
+```{r}
+OptFun = list(
+  AUC = function(y, p) {
+    PRROC::roc.curve(scores.class0 = p, weights.class0 = y)$auc
+  },
+  TopDecileLift = function(y, p) {
+    lift::TopDecileLift(p, y)
+  }
+)
+compModels <- function(SimObj) {
+  Dt     = SimObj$Dt
+  m1 = glm(formulaM1, family = binomial, data = Dt[Investigated == 1])
+  m2 = glm(formulaM2, family = binomial, data = Dt[Investigated == 1])
+  
+  y    = as.numeric(Dt[Investigated == 0, get("Fraud")])
+  p.m1 = predict(m1, newdata = Dt[Investigated == 0], type = "response")
+  p.m2 = predict(m2, newdata = Dt[Investigated == 0], type = "response")
+  
+  Res = 
+    list(
+      Model1 = list(
+        coef = coef(m1), 
+        IS   = do.call("c", lapply(OptFun, function(f) f(y = m1$y, p = fitted(m1)))), 
+        OOS  = do.call("c", lapply(OptFun, function(f) f(y = y, p = p.m1)))
+        ),
+      Model2 = list(
+        coef = coef(m2), 
+        IS   = do.call("c", lapply(OptFun, function(f) f(y = m2$y, p = fitted(m2)))), 
+        OOS  = do.call("c", lapply(OptFun, function(f) f(y = y, p = p.m2)))
+      )
+    )
+  return(Res)
+}
+```
+
+
+Comparing the predictive performance of both models, the results indicate that the model with social network features is better able to detect fraudulent claims.
+```{r}
+compModels(SimObj)
+```
