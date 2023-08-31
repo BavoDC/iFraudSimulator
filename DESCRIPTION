@@ -4,7 +4,7 @@ Title: Package to generate insurance fraud network data
 Version: 0.1.0
 Author: Bavo D.C. Campo
 Maintainer: Bavo D.C. Campo <bavo.campo@kuleuven.be>
-Description: This package contains the code to run the simulation engine as described in Campo, B.D.C, and Antonio, K. (2023) <arXiv>. The engine creates a synthetic data set with a similar network structure and available covariates as the one used in Óskarsdóttir et al. (2022). <doi: 10.1111/risa.13693>.
+Description: This package contains the code to run the simulation engine as described in Campo, B.D.C, and Antonio, K. (2023) <arXiv:2308.11659>. The engine creates a synthetic data set with a similar network structure and available covariates as the one used in Óskarsdóttir et al. (2022). <doi:10.1111/risa.13693>.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true

@@ -23,9 +23,8 @@ The basic functionality of the package is explained and demonstrated in the vign
 ```
 vignette("iFraudSimulator")
 ```
-.
 
-The working paper is currently on hold on arXiv. As soon as this is resolved, the link to the arXiv paper will be added.
+The working paper can be found on [arXiv](https://arxiv.org/abs/2308.11659).
 
 
 ## Contact
@@ -34,4 +33,4 @@ If you have questions, remarks or suggestions regarding the package, you can con
 ## Citation
 If you use this package, please cite:
 
-- Campo, Bavo D.C., and Antonio, Katrien (2023). An engine to simulate insurance fraud network data. 
+- Campo, Bavo D.C., and Antonio, Katrien (2023). An engine to simulate insurance fraud network data. arXiv:2308.11659, available at https://arxiv.org/abs/2308.11659.

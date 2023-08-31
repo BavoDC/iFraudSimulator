@@ -1,16 +1,7 @@
-# To-do:
-# - !!! Not always broker !!!!
-# - Generate claim characteristics before claim costs, such that they can be used in
-#   the gamma GLM
-# - Dependencies can be set by user
-# - Adjust values variables based on when accidents happened?
-# - fraud-score based features?
-# - business rules
-
 #' Synthetic Insurance Fraud Network Data Generator
 #'
 #' Function to generate synthetic insurance fraud network data. This function corresponds to the simulation engine as described in
-#' Campo, B.D.C. and Antonio, K. (2023).
+#' Campo, B.D.C. and Antonio, K. (2023). arXiv:2308.11659, available at https://arxiv.org/abs/2308.11659
 #'
 #' @param TargetPrev target class imbalance (i.e. the ratio of the number of fraudulent claims to the total number of claims).
 #' @param NrPH total number of policyholders
