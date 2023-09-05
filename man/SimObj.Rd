@@ -6,7 +6,7 @@
 }
 \description{
  The \code{SimObj} object is an example of a synthetically generated data set using the function \code{\link{sfnGenerator}}. The object was created using the
- code \code{SimObj = sfnGenerator(TargetPrev = 0.05, NrPH = 10000, Seed = 3, printProgress = TRUE, Parallel = TRUE)}.
+ code \code{SimObj = sfnGenerator(TargetPrev = 0.05, NrPH = 10000, Seed = 2, printProgress = TRUE, Parallel = TRUE)}.
 }
 \usage{data("SimObj")}
 \value{

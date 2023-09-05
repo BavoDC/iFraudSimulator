@@ -20,6 +20,7 @@
 #' @param Gender a list with the named parameters for generating the gender of the policyholders. By default,
 #' \code{Gender = list(propMale   = 0.71, propFemale = 0.28, propNonBinary = 0.01)}. Hence, the proportion of males is 71\%, the proportion
 #' of females is 28\% and the proportion of non-binaries is 1\%.
+#' @param probBroker probability that a claim is connected to a broker. Default probability is 50\%.
 #' @param stdize a function to standardize or normalize the covariates of the data-generating fraud model. This function should take vector
 #' as input and return a vector. By default, the vector is normalized to the range [-1, 1] using the min-max feature scaling (see \code{\link{normalize}}).
 #' @param Formulas named list with formulas for the \code{ClaimFrequency}, \code{ClaimSeverity} and \code{Fraud} model.
@@ -66,6 +67,7 @@ sfnGenerator <- function(TargetPrev = 0.01,
                    Age        = list(AvgAge = 40, SDAge = 15, RangeAge = c(18, 80)),
                    Exposure   = list(AvgExp = 5, SDExp = 1.5, RangeExp = c(0, 20)),
                    Gender     = list(propMale   = 0.71, propFemale = 0.28, propNonBinary = 0.01),
+                   probBroker = 0.5,
                    stdize = normalize,
                    Formulas =
                      list(ClaimFrequency = formula(~ AgePHBin + GenderPH + AgeCarBin + Coverage + Fuel + BonusMalusBin),
@@ -385,7 +387,7 @@ sfnGenerator <- function(TargetPrev = 0.01,
   DtClaim[, `:=` (
     Garage    = sample(garages.kandidaten, .N, T),
     Expert    = sample(experten.kandidaten, .N, T),
-    Broker    = sample(tussenpersonen.kandidaten, .N, T),
+    Broker    = ifelse(runif(1) < probBroker, sample(tussenpersonen.kandidaten, .N, T), rep(NA, .N)),
     nPersons  = replicate(.N, sample(0:5, 1, prob = c(0.025, 0.6, 0.2, 0.1, 0.1, 0.025))),
     ClaimID   = paste0(ContractID, seq_len(.N)),
     Police    = replicate(.N, sample(c("Yes", "No"), 1, prob = c(0.25, 0.75))),

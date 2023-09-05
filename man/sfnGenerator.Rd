@@ -15,6 +15,7 @@ sfnGenerator(
   Age = list(AvgAge = 40, SDAge = 15, RangeAge = c(18, 80)),
   Exposure = list(AvgExp = 5, SDExp = 1.5, RangeExp = c(0, 20)),
   Gender = list(propMale = 0.71, propFemale = 0.28, propNonBinary = 0.01),
+  probBroker = 0.5,
   stdize = normalize,
   Formulas = list(ClaimFrequency = formula(~AgePHBin + GenderPH + AgeCarBin + Coverage +
     Fuel + BonusMalusBin), ClaimSeverity = formula(~AgePHBin + Coverage + BonusMalusBin),
@@ -66,6 +67,8 @@ and the maximum 20.}
 \code{Gender = list(propMale   = 0.71, propFemale = 0.28, propNonBinary = 0.01)}. Hence, the proportion of males is 71\%, the proportion
 of females is 28\% and the proportion of non-binaries is 1\%.}
 
+\item{probBroker}{probability that a claim is connected to a broker. Default probability is 50\%.}
+
 \item{stdize}{a function to standardize or normalize the covariates of the data-generating fraud model. This function should take vector
 as input and return a vector. By default, the vector is normalized to the range [-1, 1] using the min-max feature scaling (see \code{\link{normalize}}).}
 
@@ -115,7 +118,7 @@ An object of type \code{sfnData} with the following slots:
 }
 \description{
 Function to generate synthetic insurance fraud network data. This function corresponds to the simulation engine as described in
-Campo, B.D.C. and Antonio, K. (2023).
+Campo, B.D.C. and Antonio, K. (2023). arXiv:2308.11659, available at https://arxiv.org/abs/2308.11659
 }
 \examples{
 \dontrun{
