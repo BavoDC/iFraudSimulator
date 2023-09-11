@@ -20,7 +20,7 @@
 #' @param Gender a list with the named parameters for generating the gender of the policyholders. By default,
 #' \code{Gender = list(propMale   = 0.71, propFemale = 0.28, propNonBinary = 0.01)}. Hence, the proportion of males is 71\%, the proportion
 #' of females is 28\% and the proportion of non-binaries is 1\%.
-#' @param probBroker probability that a claim is connected to a broker. Default probability is 50\%.
+#' @param probBroker probability that a broker is involved in a policy contract. Default probability is 50\%.
 #' @param stdize a function to standardize or normalize the covariates of the data-generating fraud model. This function should take vector
 #' as input and return a vector. By default, the vector is normalized to the range [-1, 1] using the min-max feature scaling (see \code{\link{normalize}}).
 #' @param Formulas named list with formulas for the \code{ClaimFrequency}, \code{ClaimSeverity} and \code{Fraud} model.
