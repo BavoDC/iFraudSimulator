@@ -383,6 +383,7 @@ sfnGenerator <- function(TargetPrev = 0.01,
 
   Dt$NClaims = N
   DtClaim    = Dt[rep(1:nrow(Dt), N), ]
+  setorder(DtClaim, ContractID)
 
   DtClaim[, `:=` (
     Garage    = sample(garages.kandidaten, .N, T),
