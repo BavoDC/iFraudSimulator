@@ -388,7 +388,7 @@ sfnGenerator <- function(TargetPrev = 0.01,
   DtClaim[, `:=` (
     Garage    = sample(garages.kandidaten, .N, T),
     Expert    = sample(experten.kandidaten, .N, T),
-    Broker    = ifelse(runif(1) < probBroker, sample(tussenpersonen.kandidaten, .N, T), rep(NA, .N)),
+    Broker    = ifelse(runif(1) <= probBroker, sample(tussenpersonen.kandidaten, .N, T), rep(NA, .N)),
     nPersons  = replicate(.N, sample(0:5, 1, prob = c(0.025, 0.6, 0.2, 0.1, 0.1, 0.025))),
     ClaimID   = paste0(ContractID, seq_len(.N)),
     Police    = replicate(.N, sample(c("Yes", "No"), 1, prob = c(0.25, 0.75))),
