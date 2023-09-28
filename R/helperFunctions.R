@@ -461,3 +461,137 @@ NrUnique <- function(x, na.rm = T) {
     stop("For the AMH copula, the theta value must lie in between -1 (negative dependence) and 1 (positive dependence).")
   return(x)
 }
+
+
+.checkExpert <- function(x) {
+  defaultE = list(Sensitivity = 0.99, Specificity = 0.99)
+  for(add in setdiff(names(defaultE), names(x)))
+    x[[add]] = defaultE[[add]]
+  if(!all(names(x) %in% names(defaultE)))
+    stop("There are incorrect slot names for the ExpertJudgement list.")
+  if(!between(x$Sensitivity, 0, 1) | !between(x$Specificity, 0, 1))
+    stop("The sensitivity and specificity of the expert judgement must be a value in between 0 and 1.")
+  return(x)
+}
+
+
+.checkCoefficients <- function(x) {
+  defaultV = list(ClaimFrequency =
+                    c(-2.17531,
+                      c(log(0.85), log(0.75), log(0.7), log(0.6), log(0.55), log(0.6), log(0.7)), # Age policy holder
+                      c(log(1.5), 0),                  # Gender = male & X
+                      c(log(0.9), log(0.8), log(0.6)), # Age car
+                      -0.12, -0.11,                    # Type of coverage
+                      log(1.19),                        # Type of fuel = Diesel
+                      c(0.12, 0.18, 0.34, 0.48, 0.54, 0.78) # Bonus-Malus scale
+                    ),
+                  ClaimSeverity =
+                    c(
+                      6.06,
+                      c(log(0.85), log(0.75), log(0.85), log(0.85), log(1.15), log(1.25), log(1.5)), # Age policy holder
+                      c(-0.16, 0.11),                      # Coverage
+                      c(0.1, 0.15, 0.15, 0.15, 0.20, 0.30) # Bonus-Malus scale
+                    ),
+                  Fraud =
+                    c(
+                      -2.5,       # Intercept
+                      0.2,        # Claim amount
+                      -0.35,      # Claim age
+                      2,          # Size first order nbh
+                      -2,         # Size second order nbh
+                      -1.5,       # Number of contracts
+                      -2,         # Age policyholder
+                      3           # n2.ratioFraud
+                    )
+                  )
+  for(add in setdiff(names(defaultV), names(x)))
+    x[[add]] = defaultV[[add]]
+  if(!all(names(x) %in% names(defaultV)))
+    stop("There are incorrect slot names for the Coefficients list.")
+  return(x)
+}
+
+
+.checkFormulas <- function(x) {
+  defaultV = list(ClaimFrequency = formula(~ AgePHBin + GenderPH + AgeCarBin + Coverage + Fuel + BonusMalusBin),
+                  ClaimSeverity  = formula(~ AgePHBin + Coverage + BonusMalusBin),
+                  Fraud = formula(~ ClaimAmount + ClaimAge + n1Size + n2Size + NrContractsPH + AgePH + n2.ratioFraud))
+  for(add in setdiff(names(defaultV), names(x)))
+    x[[add]] = defaultV[[add]]
+  if(!all(names(x) %in% names(defaultV)))
+    stop("There are incorrect slot names for the Formulas list.")
+  return(x)
+}
+
+.fakeDt <- function() {
+  DtE =
+    structure(
+      list(
+        AgeCar = numeric(0),
+        AgeCarBin = factor(levels = c("[0,5]", "(5,10]", "(10,16.1]", "(16.1,20]")),
+        AgeCarScaled = numeric(0),
+        AgePH = numeric(0),
+        AgePHBin = factor(levels = c("[18,26]", "(26,30]", "(30,36]", "(36,50]", "(50,60]", "(60,65]", "(65,70]", "(70,79.8]")),
+        AgePHOrig = numeric(0),
+        AgePHScaled = numeric(0),
+        BonusMalus = numeric(0),
+        BonusMalusBin = factor(levels = c("[0,1)", "[1,2)", "[2,3)", "[3,7)", "[7,9)", "[9,11)", "[11,22]")),
+        Broker = character(0),
+        ClaimAge = numeric(0),
+        ClaimAgeOrig = numeric(0),
+        ClaimAmount = numeric(0),
+        ClaimAmountOrig = numeric(0),
+        ClaimDate = numeric(0),
+        ClaimID = character(0),
+        ContractID = character(0),
+        Coverage = factor(levels = c("TPL", "PO", "FO")),
+        Criminal = integer(0),
+        Expert = character(0),
+        ExpertJudgement = logical(0),
+        ExpPH = numeric(0),
+        ExpPHContracts = numeric(0),
+        Fraud = logical(0),
+        fraudScore = numeric(0),
+        Fuel = factor(levels = c("Gasoline/LPG/Other", "Diesel")),
+        Garage = character(0),
+        GenderPH = factor(levels = c("female", "male", "non-binary")),
+        IDPH = integer(0),
+        Investigated = numeric(0),
+        Lambda = numeric(0),
+        n1.max = numeric(0),
+        n1.med = numeric(0),
+        n1.q1 = numeric(0),
+        n1.size = numeric(0),
+        n1Size = numeric(0),
+        n2.binFraud = numeric(0),
+        n2.max = numeric(0),
+        n2.med = numeric(0),
+        n2.q1 = numeric(0),
+        n2.ratioFraud = numeric(0),
+        n2.ratioFraudOrig = numeric(0),
+        n2.ratioNonFraud = numeric(0),
+        n2.ratioNonFraudOrig = numeric(0),
+        n2.size = numeric(0),
+        n2Size = numeric(0),
+        NClaims = integer(0),
+        nodeID = integer(0),
+        nPersons = integer(0),
+        NrContractsPH = numeric(0),
+        OrigValueCar = numeric(0),
+        Police = character(0),
+        Policyholder = character(0),
+        RateNrContracts = numeric(0),
+        Rule1 = logical(0),
+        Rule2 = logical(0),
+        Rule3 = logical(0),
+        TimeSinceClaim = numeric(0),
+        ValueCar = numeric(0),
+        ValueCarScaled = numeric(0)
+      ),
+      class = c("data.table", "data.frame")
+    )
+  DtE = DtE[rep(1, 5)]
+  for(j in seq_along(DtE))
+    if(is.numeric(DtE[[j]])) DtE[[j]] = runif(nrow(DtE))
+  return(DtE)
+}

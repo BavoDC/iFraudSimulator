@@ -32,6 +32,8 @@
 #' the dependency between the age of the policyholder and the number of contracts and the slot \code{AgeCarVsValueCar} controls the dependency between the
 #' age of the car and the value of the car. If the list contains just one entry, the remaining entries will be set to their default values.
 #' @param BusinessRules logical expressions to flag suspicious claims
+#' @param ExpertJudgement a list with the sensitivity (i.e. the probability of correctly identifying a fraudulent claim as fraudulent) and specificity (i.e. the probability of
+#' correctly identifying a non-fraudulent claim as non-fraudulent) of the expert judgement. Default is \code{list(Sensitivity = 0.99, Specificity = 0.99)}.
 #' @param Parallel logical, indicates whether parallel computing has to be used.
 #' @param NrCores the number of cores that are utilized for parallel computing .
 #' @param printProgress logical, indicates whether the progress has to be printed.
@@ -115,6 +117,7 @@ sfnGenerator <- function(TargetPrev = 0.01,
                          NULL,
                          "ContractID"
                        )),
+                   ExpertJudgement = list(Sensitivity = 0.99, Specificity = 0.99),
                    Parallel = TRUE,
                    NrCores = detectCores() - 2,
                    printProgress = TRUE,
@@ -167,7 +170,10 @@ sfnGenerator <- function(TargetPrev = 0.01,
       NrCores = detectCores() - 1
     }
 
-  theta = .checkTheta(theta)
+  Formulas        = .checkFormulas(Formulas)
+  Coefficients    = .checkCoefficients(Coefficients)
+  theta           = .checkTheta(theta)
+  ExpertJudgement = .checkExpert(ExpertJudgement)
 
 
   #### 0.2 Dashboard for simulation settings ####
@@ -534,10 +540,12 @@ sfnGenerator <- function(TargetPrev = 0.01,
   prevFraud = 1
   iter      = 0
 
-  TempForm = all.vars(Formulas$Fraud) %>% .[!grepl("n1\\.|n2\\.", .)]
-  TempForm = formula(paste("~ ", paste(TempForm, collapse = "+")))
+  rmVars   = all.vars(Formulas$Fraud) %>% .[grepl("n1\\.|n2\\.", .)]
+  TempForm = update(Formulas$Fraud, formula(paste0("~ . -", paste0(rmVars, collapse = " - "))))
   X        = as(model.matrix(TempForm, data = DtClaim), "sparseMatrix")
-  CoefLog  = Coefficients$Fraud[1:ncol(X)]
+  DtE      = .fakeDt()
+  Xtar     = model.matrix(Formulas$Fraud, data = DtE)
+  CoefLog  = Coefficients$Fraud[colnames(Xtar) %in% colnames(X)]
 
   while(!(prevFraud < TargetPrev & prevFraud > 0)) {
     SelectBatch = sample(unique(DtClaim$IDPH),
@@ -633,7 +641,7 @@ sfnGenerator <- function(TargetPrev = 0.01,
   DtClaim[, eval(parse(text = varTmp))]
 
 
-  DtClaim[, ExpertJudgement := if(all(Investigated == 0)) rep(NA, .N) else if(all(Fraud == T)) rbinom(.N, 1, 0.99) else rbinom(.N, 1, 0.01),
+  DtClaim[, ExpertJudgement := if(all(Investigated == 0)) rep(NA, .N) else if(all(Fraud == T)) rbinom(.N, 1, ExpertJudgement$Sensitivity) else rbinom(.N, 1, ExpertJudgement$Specificity),
           by = c("Investigated", "Fraud")]
 
 
