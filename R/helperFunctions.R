@@ -232,7 +232,7 @@ FindIntercept <- function(X, B, TargetPrev, yKnown, Range = c(-10, 10)) {
     if(i > 1e2)
       break
   }
-  return(list(B0 = B0, Seed = i, Converged = i < 1e2))
+  return(list(B0 = B0, Seed = i, Converged = i <= 1e2))
 }
 
 FactorToNumeric <- function(x) {
